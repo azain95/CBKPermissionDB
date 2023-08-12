@@ -1,16 +1,34 @@
 const express = require("express");
 const app = express();
-const cors = require ("cors");
-const pool = require("./db")
+const cors = require("cors");
+const pool = require("./db");
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const saltRounds = 10;
-// middleware 
+
+// middleware
 app.use(cors());
 app.use(express.json()); //req.body
 
+// JWT secret key
+const jwtSecret = process.env.JWT_SECRET || 'your-secret-key'; // Make sure to store this in an environment variable in production
 
-//Routes//
-
+// JWT authentication middleware
+function authenticateJWT(req, res, next) {
+  const authHeader = req.header('Authorization');
+const token = authHeader && authHeader.split(' ')[1];
+  if (token) {
+    jwt.verify(token, jwtSecret, (err, user) => {
+      if (err) {
+        return res.sendStatus(403);
+      }
+      req.user = user;
+      next();
+    });
+  } else {
+    res.sendStatus(401);
+  }
+}
 // create user 
 app.post("/signup", async (req, res) => {
   try {
@@ -37,33 +55,35 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// Verify a password
+// Verify a password and create JWT token
 app.post("/signin", async (req, res) => {
   try {
-      const { user_id, password } = req.body;
-      
-      const user = await pool.query(
-          'SELECT * FROM users WHERE user_id = $1',
-          [user_id]
-      );
+    const { user_id, password } = req.body;
+    
+    const user = await pool.query(
+        'SELECT * FROM users WHERE user_id = $1',
+        [user_id]
+    );
 
-      if (user.rows.length > 0) {
-          const passwordMatch = await bcrypt.compare(password, user.rows[0].password);
-          if (!passwordMatch) {
-              res.status(400).json({ error: "Invalid credentials" });
-          } else {
-              // Passwords match, proceed with login
-              res.json(user.rows[0]);
-          }
-      } else {
-          res.status(400).json({ error: "Invalid credentials" });
-      }
+    if (user.rows.length > 0) {
+        const passwordMatch = await bcrypt.compare(password, user.rows[0].password);
+        if (!passwordMatch) {
+            res.status(400).json({ error: "Invalid credentials" });
+        } else {
+            const token = jwt.sign({ user_id: user.rows[0].user_id }, jwtSecret, { expiresIn: '1h' });
+
+            // Exclude the password field from the response
+            const { password, ...userWithoutPassword } = user.rows[0];
+            res.json({ token, user: userWithoutPassword });
+        }
+    } else {
+        res.status(400).json({ error: "Invalid credentials" });
+    }
   } catch (err) {
-      console.error(err.message);
-      res.status(500).json({ error: "Error logging in", details: err.message });
+    console.error(err.message);
+    res.status(500).json({ error: "Error logging in", details: err.message });
   }
 });
-
 
 
 // change password
@@ -101,7 +121,7 @@ app.post("/changepassword", async (req, res) => {
 
   // create request 
 
-  app.post("/requests", async (req, res) => {
+  app.post("/requests",authenticateJWT, async (req, res) => {
     try {
       const { req_datetime, req_type, date_from, date_to, time_from, time_to, user_id, reason, attachment } = req.body;
   
@@ -128,7 +148,7 @@ app.post("/changepassword", async (req, res) => {
   
 // get all requests 
 
-app.get("/requests", async (req, res) => {
+app.get("/requests", authenticateJWT,async (req, res) => {
     try {
       const allRequests = await pool.query('SELECT * FROM "requests"');
       res.json(allRequests.rows);
@@ -139,7 +159,7 @@ app.get("/requests", async (req, res) => {
   });
 
   // get requests for specific user 
-  app.get("/requests/user/:user_id", async (req, res) => {
+  app.get("/requests/user/:user_id",authenticateJWT, async (req, res) => {
     try {
       const { user_id } = req.params;
       const userRequests = await pool.query('SELECT * FROM "requests" WHERE "user_id" = $1', [user_id]);
@@ -168,7 +188,7 @@ app.get("/requests", async (req, res) => {
   
 // get all users 
 
-app.get("/users", async (req, res) => {
+app.get("/users",authenticateJWT, async (req, res) => {
     try {
       const allUsers = await pool.query('SELECT * FROM "users"');
       res.json(allUsers.rows);
@@ -181,7 +201,7 @@ app.get("/users", async (req, res) => {
 
 
 // update a request 
-app.put("/requests/:request_id", async (req, res) => {
+app.put("/requests/:request_id",authenticateJWT, async (req, res) => {
     try {
       const { request_id } = req.params;
       const { status } = req.body;
@@ -205,7 +225,7 @@ app.put("/requests/:request_id", async (req, res) => {
 
 //delete a request 
 
-app.delete("/requests/:request_id", async (req, res) => {
+app.delete("/requests/:request_id",authenticateJWT, async (req, res) => {
     try {
       const { request_id } = req.params;
       const deleteRequest = await pool.query('DELETE FROM "requests" WHERE "id" = $1', [request_id]);
@@ -220,11 +240,11 @@ app.delete("/requests/:request_id", async (req, res) => {
   });
 
 
-app.listen(5000, () => {
+  app.listen(5000, () => {
     console.log("server has started on port 5000");
 });
 
 app.use(function (err, req, res, next) {
-  console.error(err.stack)
-  res.status(500).send('Something broke!')
-})
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});

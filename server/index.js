@@ -15,20 +15,23 @@ const jwtSecret = process.env.JWT_SECRET || 'your-secret-key'; // Make sure to s
 
 // JWT authentication middleware
 function authenticateJWT(req, res, next) {
-  const authHeader = req.header('Authorization');
-const token = authHeader && authHeader.split(' ')[1];
-  if (token) {
-    jwt.verify(token, jwtSecret, (err, user) => {
-      if (err) {
-        return res.sendStatus(403);
-      }
-      req.user = user;
-      next();
-    });
+  const authHeader = req.headers.authorization;
+
+  if (authHeader) {
+      const token = authHeader.split(' ')[1]; // Extracting the token from the Bearer schema
+
+      jwt.verify(token, jwtSecret, (err, user) => {
+          if (err) {
+              return res.sendStatus(403); // Forbidden
+          }
+          req.user = user; // Adding user information to the request
+          next(); // Continue processing the request
+      });
   } else {
-    res.sendStatus(401);
+      res.sendStatus(401); // Unauthorized
   }
 }
+
 // create user 
 app.post("/signup", async (req, res) => {
   try {

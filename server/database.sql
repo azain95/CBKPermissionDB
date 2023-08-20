@@ -4,8 +4,9 @@ CREATE TABLE "users" (
     "user_id" VARCHAR(255) NOT NULL,
     "name" VARCHAR(255) NOT NULL,
     "email" VARCHAR(255) NOT NULL,
+    "password" VARCHAR(255) NOT NULL,
     "mobile" BIGINT NOT NULL,
-    "is_admin" BOOLEAN NOT NULL,
+    "is_admin" BOOLEAN NOT NULL DEFAULT false,
     PRIMARY KEY ("user_id"),
     CONSTRAINT "users_email_unique" UNIQUE ("email"),
     CONSTRAINT "users_mobile_unique" UNIQUE ("mobile")
@@ -22,7 +23,10 @@ CREATE TABLE "requests" (
     "user_id" VARCHAR(255) NOT NULL,
     "reason" TEXT NOT NULL,
     "attachment" VARCHAR(255) NOT NULL,
+    "status" VARCHAR(20) NOT NULL DEFAULT 'pending',
     PRIMARY KEY ("id"),
-    CONSTRAINT "requests_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users" ("user_id")
+    CONSTRAINT "requests_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users" ("user_id"),
+    CONSTRAINT "requests_req_type_check" CHECK (req_type::text = ANY (ARRAY['permission', 'annual leave', 'sick leave', 'other leave']::text[])),
+    CONSTRAINT "requests_status_check" CHECK (status::text = ANY (ARRAY['pending', 'approved', 'rejected']::text[]))
 );
 CREATE INDEX "requests_user_id_index" ON "requests" ("user_id");

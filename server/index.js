@@ -5,6 +5,7 @@ const pool = require("./db");
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const saltRounds = 10;
+const http = require('http');
 
 // middleware
 app.use(cors());
@@ -243,11 +244,79 @@ app.delete("/requests/:request_id",authenticateJWT, async (req, res) => {
   });
 
 
-  app.listen(5000, () => {
-    console.log("server has started on port 5000");
+// grant admin privileges from a user
+app.put("/users/makeadmin/:user_id", authenticateJWT, async (req, res) => {
+    try {
+      const { user_id } = req.params;
+  
+      // Check if the user exists
+      const user = await pool.query(
+        'SELECT * FROM "users" WHERE "user_id" = $1',
+        [user_id]
+      );
+      console.log(`User query result: ${JSON.stringify(user.rows)}`); // Debug log
+
+  
+      if (user.rows.length === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+  
+      // Update the is_admin field to true
+      await pool.query(
+        'UPDATE "users" SET "is_admin" = true WHERE "user_id" = $1',
+        [user_id]
+      );
+  
+      res.json({ message: "User updated to admin successfully" });
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).json({ error: "Error updating user to admin" });
+    }
+  });
+
+
+// Remove admin privileges from a user
+
+app.put("/users/removeadmin/:user_id", authenticateJWT, async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    // Check if the user exists
+    const user = await pool.query(
+      'SELECT * FROM users WHERE user_id = $1',
+      [user_id]
+    );
+
+    if (user.rows.length > 0) {
+      // Update the is_admin field to false
+      await pool.query(
+        'UPDATE users SET is_admin = $1 WHERE user_id = $2',
+        [false, user_id]
+      );
+
+      res.json({ message: "Admin privileges removed successfully" });
+    } else {
+      res.status(400).json({ error: "User not found" });
+    }
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Error removing admin privileges" });
+  }
 });
 
-app.use(function (err, req, res, next) {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
-});
+
+
+
+  const port = 5000;
+
+  const server = http.createServer(app);
+  server.timeout = 10000; // 10-second timeout
+  
+  server.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+  
+  app.use(function (err, req, res, next) {
+    console.error(err.stack);
+    res.status(500).send('Something broke!');
+  });

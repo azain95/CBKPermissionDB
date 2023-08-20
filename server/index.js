@@ -59,6 +59,23 @@ app.post("/signup", async (req, res) => {
   }
 });
 
+
+//delete user 
+
+app.delete("/users/:user_id", authenticateJWT, async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const deleteUser = await pool.query('DELETE FROM "users" WHERE "user_id" = $1', [user_id]);
+    if (deleteUser.rowCount === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json({ message: "User deleted successfully" });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Error deleting user" });
+  }
+});
+
 // Verify a password and create JWT token
 app.post("/signin", async (req, res) => {
   try {
@@ -72,10 +89,10 @@ app.post("/signin", async (req, res) => {
     if (user.rows.length > 0) {
         const passwordMatch = await bcrypt.compare(password, user.rows[0].password);
         if (!passwordMatch) {
-            res.status(400).json({ error: "Invalid credentials" });
+          res.status(400).json({ error: "Invalid credentials" });
         } else {
-            const token = jwt.sign({ user_id: user.rows[0].user_id }, jwtSecret, { expiresIn: '1h' });
-
+          const token = jwt.sign({ user_id: user.rows[0].user_id, is_admin: user.rows[0].is_admin }, jwtSecret, { expiresIn: '1h' }); // Include is_admin attribute
+      
             // Exclude the password field from the response
             const { password, ...userWithoutPassword } = user.rows[0];
             res.json({ token, user: userWithoutPassword });
@@ -150,17 +167,16 @@ app.post("/changepassword", async (req, res) => {
   
 
   
-// get all requests 
-
-app.get("/requests", authenticateJWT,async (req, res) => {
-    try {
-      const allRequests = await pool.query('SELECT * FROM "requests"');
-      res.json(allRequests.rows);
-    } catch (err) {
-      console.error(err.message);
-      res.status(500).json({ error: "Error retrieving requests" });
-    }
-  });
+// Get all requests (Admin only)
+app.get("/requests", authenticateAdmin, async (req, res) => {
+  try {
+    const allRequests = await pool.query('SELECT * FROM "requests"');
+    res.json(allRequests.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Error retrieving requests" });
+  }
+});
 
   // get requests for specific user 
   app.get("/requests/user/:user_id",authenticateJWT, async (req, res) => {
@@ -175,21 +191,6 @@ app.get("/requests", authenticateJWT,async (req, res) => {
   });
 
 
-  // get only leaves 
-  // app.get("/requests/user/:user_id", async (req, res) => {
-  //   try {
-  //     const { user_id } = req.params;
-  //     const userRequests = await pool.query(
-  //       'SELECT * FROM "requests" WHERE "user_id" = $1 AND "req_type" != $2',
-  //       [user_id, "permission"]
-  //     );
-  //     res.json(userRequests.rows);
-  //   } catch (err) {
-  //     console.error(err.message);
-  //     res.status(500).json({ error: "Error retrieving user requests" });
-  //   }
-  // });
-  
 // get all users 
 
 app.get("/users",authenticateJWT, async (req, res) => {
@@ -202,6 +203,24 @@ app.get("/users",authenticateJWT, async (req, res) => {
     }
   });
   
+
+  // get specific user 
+
+  app.get("/users/:user_id", authenticateJWT, async (req, res) => {
+    try {
+      const { user_id } = req.params;
+      const user = await pool.query('SELECT * FROM "users" WHERE "user_id" = $1', [user_id]);
+      if (user.rowCount === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json(user.rows[0]);
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).json({ error: "Error fetching user" });
+    }
+  });
+
+
 
 
 // update a request 
@@ -254,7 +273,6 @@ app.put("/users/makeadmin/:user_id", authenticateJWT, async (req, res) => {
         'SELECT * FROM "users" WHERE "user_id" = $1',
         [user_id]
       );
-      console.log(`User query result: ${JSON.stringify(user.rows)}`); // Debug log
 
   
       if (user.rows.length === 0) {
@@ -303,6 +321,59 @@ app.put("/users/removeadmin/:user_id", authenticateJWT, async (req, res) => {
     res.status(500).json({ error: "Error removing admin privileges" });
   }
 });
+
+
+// Admin auth middleware 
+
+function authenticateAdmin(req, res, next) {
+  authenticateJWT(req, res, () => {
+    if (req.user && req.user.is_admin) {
+      next();
+    } else {
+      res.sendStatus(403); // Forbidden
+    }
+  });
+}
+
+// Approve a leave request
+app.put("/requests/:request_id/approve", authenticateAdmin, async (req, res) => {
+  try {
+    const { request_id } = req.params;
+
+    // Approve the request in the database
+    const updateRequest = await pool.query(
+      'UPDATE "requests" SET "status" = $1 WHERE "id" = $2 RETURNING *',
+      ['approved', request_id]
+    );
+
+    res.json(updateRequest.rows[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Error approving request" });
+  }
+});
+
+// Reject a leave request
+app.put("/requests/:request_id/reject", authenticateAdmin, async (req, res) => {
+  try {
+    const { request_id } = req.params;
+    const { reason } = req.body; // Get the reason from the request body
+
+    // Reject the request in the database and update the reason
+    const updateRequest = await pool.query(
+      'UPDATE "requests" SET "status" = $1, "reason" = $2 WHERE "id" = $3 RETURNING *',
+      ['rejected', reason, request_id] // Include the reason in the update query
+    );
+
+    res.json(updateRequest.rows[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Error rejecting request" });
+  }
+});
+
+
+
 
 
 

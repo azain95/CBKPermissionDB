@@ -26,7 +26,7 @@ CREATE TABLE "requests" (
     "status" VARCHAR(20) NOT NULL DEFAULT 'pending',
     PRIMARY KEY ("id"),
     CONSTRAINT "requests_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users" ("user_id"),
-    CONSTRAINT "requests_req_type_check" CHECK (req_type::text = ANY (ARRAY['permission', 'annual leave', 'sick leave', 'other leave']::text[])),
+    CONSTRAINT "requests_req_type_check" CHECK (req_type::text = ANY (ARRAY['permission', 'annual leave', 'sick leave', 'emergency leave', 'maternity leave', 'other leave', 'swap']::text[])),
     CONSTRAINT "requests_status_check" CHECK (status::text = ANY (ARRAY['pending', 'approved', 'rejected']::text[]))
 );
 CREATE INDEX "requests_user_id_index" ON "requests" ("user_id");

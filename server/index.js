@@ -170,7 +170,7 @@ app.post("/changepassword", async (req, res) => {
 // Get all requests (Admin only)
 app.get("/requests", authenticateAdmin, async (req, res) => {
   try {
-    const allRequests = await pool.query('SELECT * FROM "requests"');
+    const allRequests = await pool.query('SELECT r.*, u.name FROM "requests" r JOIN "users" u ON r."user_id" = u."user_id"');
     res.json(allRequests.rows);
   } catch (err) {
     console.error(err.message);
@@ -372,7 +372,61 @@ app.put("/requests/:request_id/reject", authenticateAdmin, async (req, res) => {
   }
 });
 
+app.get("/dashboard/statistics", async (req, res) => {
+  try {
+  // Count total leave requests, permissions, swaps based on status
+  const requests = await pool.query('SELECT req_type, status, COUNT(*) AS count FROM "requests" GROUP BY req_type, status');
+    
 
+    // Count total users
+    const users = await pool.query('SELECT COUNT(*) AS count FROM "users"');
+
+    // Process the data
+    const statistics = {
+      totalLeaves: 0,
+      totalPermissions: 0,
+      totalSwaps: 0,
+      totalApprovedLeaves: 0,
+      totalApprovedPermissions: 0,
+      totalApprovedSwaps: 0,
+      totalRejectedLeaves: 0,
+      totalRejectedPermissions: 0,
+      totalRejectedSwaps: 0,
+      totalPendingLeaves: 0,
+      totalPendingPermissions: 0,
+      totalPendingSwaps: 0,
+      totalUsers: users.rows[0].count
+    };
+
+    requests.rows.forEach(row => {
+      const count = parseInt(row.count, 10); // Convert the count to a number
+      if (['sick leave', 'annual leave', 'other leave', 'emergency leave', 'maternity leave'].includes(row.req_type)) {
+        statistics.totalLeaves += count;
+        if (row.status === 'approved') statistics.totalApprovedLeaves += count;
+        if (row.status === 'rejected') statistics.totalRejectedLeaves += count;
+        if (row.status === 'pending') statistics.totalPendingLeaves += count;
+      }
+      
+      if (row.req_type === 'swap') {
+        statistics.totalSwaps += count;
+        if (row.status === 'approved') statistics.totalApprovedSwaps += count;
+        if (row.status === 'rejected') statistics.totalRejectedSwaps += count;
+        if (row.status === 'pending') statistics.totalPendingSwaps += count;
+      }
+      if (row.req_type === 'permission') {
+        statistics.totalPermissions += count;
+        if (row.status === 'approved') statistics.totalApprovedPermissions += count;
+        if (row.status === 'rejected') statistics.totalRejectedPermissions += count;
+        if (row.status === 'pending') statistics.totalPendingPermissions += count;
+      }
+    });
+
+    res.json(statistics);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Error retrieving statistics" });
+  }
+});
 
 
 

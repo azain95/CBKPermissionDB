@@ -1,0 +1,26 @@
+version: "3"
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: yourdb
+      POSTGRES_USER: youruser
+      POSTGRES_PASSWORD: yourpassword
+    ports:
+      - "5432:5432" # Expose PostgreSQL port to the host
+
+  nodejs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      PGHOST: postgres
+      PGDATABASE: cbkpermissionsdb
+      PGUSER: postgres
+      PGPASSWORD: topg
+    volumes:
+      - .:/app
+    ports:
+      - "8080:8080" # Expose Node.js app port to the host
+    depends_on:
+      - postgres

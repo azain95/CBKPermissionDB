@@ -6,7 +6,7 @@ CREATE TABLE "users" (
     "email" VARCHAR(255) ,
     "password" VARCHAR(255) NOT NULL,
     "mobile" BIGINT NOT NULL,
-    "is_admin" BOOLEAN NOT NULL DEFAULT false,
+    "is_admin" BOOLEAN NOT NULL,
     PRIMARY KEY ("user_id"),
     CONSTRAINT "users_email_unique" UNIQUE ("email"),
     CONSTRAINT "users_mobile_unique" UNIQUE ("mobile")

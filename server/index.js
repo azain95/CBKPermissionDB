@@ -4,6 +4,8 @@ import { hash, compare } from "bcryptjs";
 import * as jwt from "jsonwebtoken";
 import http from "http";
 import pool from "./db.js";
+import fs from "fs";
+import {join} from 'path'
 
 const saltRounds = 10;
 
@@ -470,10 +472,25 @@ app.get("/dashboard/statistics", async (req, res) => {
 });
 
 
+// Read the SQL script from the file
+const sqlScript = fs.readFileSync(join(__dirname, "database.sql"), "utf8");
+
+export async function runSqlScript() {
+  try {
+    await pool.query(sqlScript);
+    console.log("SQL script executed successfully");
+  } catch (error) {
+    console.error("Error executing SQL script:", error);
+  }
+}
+
+
 const server = http.createServer(app);
 server.timeout = 10000; // 10-second timeout
 
-server.listen(5000);
+server.listen(5000, () => {
+  runSqlScript()
+});
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

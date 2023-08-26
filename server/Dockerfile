@@ -35,6 +35,7 @@ WORKDIR /app
 ENV NODE_ENV production
 
 
+COPY --chown=node:node --from=build /app/database.sql dist/database.sql
 COPY --chown=node:node --from=build /app/dist dist
 COPY --chown=node:node --from=build /app/node_modules node_modules
 

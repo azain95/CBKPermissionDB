@@ -469,14 +469,11 @@ app.get("/dashboard/statistics", async (req, res) => {
   }
 });
 
-const port = 8080;
 
 const server = http.createServer(app);
 server.timeout = 10000; // 10-second timeout
 
-server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+server.listen(5000);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: topg
     ports:
-      - "5432:5432" # Expose PostgreSQL port to the host
+      - "5432:5433" # Expose PostgreSQL port to the host
     networks:
       - per-app-net
 

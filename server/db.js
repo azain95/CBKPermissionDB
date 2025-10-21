@@ -6,7 +6,7 @@ export default new Pool({
   user: process.env.PGUSER,
   password: process.env.PGPASSWORD,
   host: process.env.PGHOST,
-  port: 5432,
+  port: 5433,
   database: process.env.PGDATABASE,
 });
 

@@ -1,5 +1,3 @@
-// src/middleware/auth.js
-
 import pkg from "jsonwebtoken";
 const { verify } = pkg;
 import { jwtSecret } from '../config.js';
@@ -21,7 +19,6 @@ async function authenticateJWT(req, res, next) {
             }
             
             try {
-                // ✅ THE FIX: Use decoded.user_id to match the property in the token
                 const { rows } = await db.query("SELECT * FROM users WHERE user_id = $1", [decoded.user_id]);
 
                 if (rows.length === 0) {

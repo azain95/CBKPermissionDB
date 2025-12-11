@@ -16,4 +16,4 @@ const hashedPassword = bcrypt.hashSync(password, saltRounds);
 console.log(`\nPassword to use: ${password}`);
 console.log('\n--- Copy the HASH below ---');
 console.log(hashedPassword);
-console.log('--- End of HASH ---\n');
+console.log('--- End of HASH ---\n'); 

@@ -5,7 +5,6 @@ import authenticateJWT from '../middleware/auth.js'; // General logged-in check
 
 const router = express.Router();
 
-// This route remains the same
 router.get('/', authenticateJWT, async (req, res) => {
     try {
         const { year, month, department } = req.query;
@@ -51,7 +50,6 @@ router.get('/', authenticateJWT, async (req, res) => {
 });
 
 
-// GET shift counts based on filters - WITH UPDATED LOGIC
 router.get('/counts', authenticateJWT, authenticateAdmin, async (req, res) => {
     try {
         const { shift_date, job_title, shift_type } = req.query;
@@ -99,7 +97,6 @@ router.get('/counts', authenticateJWT, authenticateAdmin, async (req, res) => {
 });
 
 
-// This monthly-counts route also gets the updated logic
 router.get('/monthly-counts', authenticateJWT, authenticateAdmin, async (req, res) => {    try {
         const { month, year, job_title } = req.query;
         if (!month || !year) return res.status(400).json({ error: 'Month and year are required.' });
@@ -144,16 +141,13 @@ router.get('/monthly-counts', authenticateJWT, authenticateAdmin, async (req, re
 });
 
 
-// The upload route remains the same for now
 router.post('/upload', authenticateAdmin, async (req, res) => {
     // ... upload logic ...
 });
 
 
 
-// routes/schedules.js
 
-// Replace the entire existing '/analytics' route with this one
 router.get('/analytics', authenticateJWT, async (req, res) => {
     try {
         const { year, month, department } = req.query;
